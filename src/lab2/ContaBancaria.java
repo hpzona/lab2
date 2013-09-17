@@ -6,19 +6,20 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 class ContaBancaria {
-	int numero;
 	int saldoAnterior;
+	int numero;
 	ArrayList<Transacao> transacoes;
 
 	private Lock accessLock = new ReentrantLock();
-
+	private boolean ocupado = false; // se o buffer estiver ocupado
+	
 	// condi��es para controlar leitura e grava��o
-	private Condition canWrite = accessLock.newCondition();
+	private Condition podeDebitar = accessLock.newCondition();
+	private Condition podeCreditar = accessLock.newCondition();
+	
 
-	private boolean occupied = false; // se o buffer estiver ocupado
-
-	ContaBancaria(int numero) {
-		this.numero = numero;
+	ContaBancaria(int saldo) {
+		this.saldoAnterior = saldo;
 		this.transacoes = new ArrayList<Transacao>();
 	}
 
@@ -33,20 +34,20 @@ class ContaBancaria {
 	void debite(int valor, String data) {
 		accessLock.lock();
 		try {
-			while (occupied) {
-				System.out.println("Producer tries to write.");
-				canWrite.await();
+			while (ocupado) {
+				System.out.println();
+				System.out.println("----------Outra transação em execução---------"); 
+				System.out.println("A transação de débito não pode ser executada. ");
+				System.out.println();
+				podeDebitar.await();
 			}
-
-			occupied = true;
-
-			TransacaoDebito debito = new TransacaoDebito(valor, data);
-			transacoes.add(debito);
-			saldoAnterior -= valor;
-
-			occupied = false;
-			canWrite.signal();
-			
+			this.saldoAnterior -= valor;
+			ocupado = true;
+			podeCreditar.signal();
+			System.out.println("-------------Transação de débito-------------"); 
+			System.out.println("Valor: -R$" + valor + ",00");
+			System.out.println("Saldo atual: R$" + getSaldoAtual() + ",00");
+			System.out.println("Data: " + data);
 		} catch (InterruptedException exception) {
 			exception.printStackTrace();
 		} finally {
@@ -58,21 +59,20 @@ class ContaBancaria {
 		
 		accessLock.lock();
 		try {
-			while (occupied) {
-				System.out.println("Producer tries to write.");
-				canWrite.await();
+			while (!ocupado) {
+				System.out.println();
+				System.out.println("----------Outra transação em execução---------"); 
+				System.out.println("A transação de crédito não pode ser executada. ");
+				System.out.println();
+				podeCreditar.await();
 			}
-
-			occupied = true;
-
-			TransacaoCredito credito = new TransacaoCredito(valor, data);
-			transacoes.add(credito);
-			saldoAnterior += valor;
-			
-
-			occupied = false;
-			canWrite.signal();
-			
+			this.saldoAnterior += valor;
+			ocupado = false;
+			System.out.println("-------------Transação de crédito-------------"); 
+			System.out.println("Valor: +R$" + valor + ",00");
+			System.out.println("Saldo atual: R$" + getSaldoAtual() + ",00");
+			System.out.println("Data: " + data);
+			podeDebitar.signal();
 		} catch (InterruptedException exception) {
 			exception.printStackTrace();
 		} finally {

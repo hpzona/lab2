@@ -1,9 +1,16 @@
 package lab2;
 
-class TransacaoCredito extends Transacao {
+class TransacaoCredito extends Transacao implements Runnable {
 	
-	TransacaoCredito(int valor, String data) {
+	private ContaBancaria contaBancaria;
+	private int valor;
+	private String data;
+	
+	TransacaoCredito(ContaBancaria contaBancaria, int valor, String data) {
 		super(valor, data);
+		this.valor = valor;
+		this.data = data;
+		this.contaBancaria = contaBancaria;
 	}
 
 	int getVariacao() {
@@ -12,6 +19,12 @@ class TransacaoCredito extends Transacao {
 	}
 
 	void emiteLinhaExtrato() {
-		
+		System.out.println("Credito no valor de: " + getValor());
+		System.out.println("Data: " + getData());
+	}
+
+	@Override
+	public void run() {
+		contaBancaria.credite(valor, data);
 	}
 }
